@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { User } from '../../user/domain/user.entity';
 import { Anime } from '../../anime/domain/anime.entity';
 
@@ -7,18 +7,15 @@ export class Review {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @Column({ type: 'int' })
+  rating!: number; // 1–10
+
+  @Column({ type: 'text', nullable: true })
+  text?: string;
+
   @ManyToOne(() => User)
   user!: User;
 
   @ManyToOne(() => Anime)
   anime!: Anime;
-
-  @Column({ type: 'int' })
-  rating!: number;
-
-  @Column({ type: 'text', nullable: true })
-  text?: string;
-
-  @CreateDateColumn()
-  createdAt!: Date;
 }

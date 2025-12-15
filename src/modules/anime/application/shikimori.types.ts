@@ -6,9 +6,9 @@ export interface ShikimoriAnime {
   score: string;
   episodes: number;
   status: string;
-  genres: {
+  genres: Array<{
     id: number;
     name: string;
     russian: string;
-  }[];
+  }>;
 }
