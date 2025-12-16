@@ -4,6 +4,8 @@ import { User } from '../../modules/user/domain/user.entity';
 import { Anime } from '../../modules/anime/domain/anime.entity';
 import { Genre } from '../../modules/anime/domain/genre.entity';
 import { Review } from '../../modules/review/domain/review.entity';
+import { Favorite } from '../../modules/user/domain/favorite.entity';
+import { Rating } from '../../modules/user/domain/rating.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -14,7 +16,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'anime_catalog',
   synchronize: true,
   logging: false,
-  entities: [User, Anime, Genre, Review],
+  entities: [User, Anime, Genre, Review, Favorite, Rating],
   migrations: [],
   subscribers: [],
 });

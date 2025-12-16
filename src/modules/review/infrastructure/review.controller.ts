@@ -1,4 +1,4 @@
-import { Router, Response, Request } from 'express';
+import { Router, Response } from 'express';
 import { ReviewService } from '../application/review.service';
 import { authMiddleware, AuthRequest } from '../../../shared/middlewares/auth.middleware';
 
@@ -19,10 +19,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       animeId,
       rating,
       text,
+      req.user.name
     );
 
     res.status(201).json(review);
   } catch (err: unknown) {
+    console.error('Error creating review:', err);
     if (err instanceof Error) {
       res.status(400).json({ message: err.message });
     } else {
@@ -32,10 +34,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/reviews/anime/:id
-router.get('/anime/:id', async (req: Request, res: Response) => {
+router.get('/anime/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    const reviews = await reviewService.getReviewsByAnime(id);
+    const animeId = Number(req.params.id);
+    const reviews = await reviewService.getReviewsByAnime(animeId);
     res.json(reviews);
   } catch (err: unknown) {
     if (err instanceof Error) {

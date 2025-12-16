@@ -1,11 +1,15 @@
 import { AppDataSource } from '../../../shared/database/data-source';
 import { User } from '../domain/user.entity';
 import { Anime } from '../../anime/domain/anime.entity';
+import { Favorite } from '../domain/favorite.entity';
+import { Rating } from '../domain/rating.entity';
 import bcrypt from 'bcrypt';
 
 export class UserService {
   private userRepo = AppDataSource.getRepository(User);
   private animeRepo = AppDataSource.getRepository(Anime);
+  private favoriteRepo = AppDataSource.getRepository(Favorite);
+  private ratingRepo = AppDataSource.getRepository(Rating);
 
   async createUser(email: string, password: string, name?: string) {
     const hashed = await bcrypt.hash(password, 10);
@@ -21,105 +25,72 @@ export class UserService {
     return this.userRepo.findOneBy({ id });
   }
 
-  async getUserFavorites(userId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['favorites']
-    });
-
+  async updateUser(id: number, data: { name?: string }) {
+    const user = await this.userRepo.findOneBy({ id });
     if (!user) {
       throw new Error('User not found');
     }
 
-    return user.favorites;
+    if (data.name !== undefined) {
+      user.name = data.name;
+    }
+
+    return this.userRepo.save(user);
+  }
+
+  async getUserFavorites(userId: number) {
+    return this.favoriteRepo.find({
+      where: { userId },
+      relations: ['anime']
+    });
   }
 
   async addToFavorites(userId: number, animeId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['favorites']
+    const existingFavorite = await this.favoriteRepo.findOne({
+      where: { userId, animeId }
     });
 
-    if (!user) {
-      throw new Error('User not found');
+    if (existingFavorite) {
+      return this.getUserFavorites(userId);
     }
 
     const anime = await this.animeRepo.findOneBy({ id: animeId });
-
     if (!anime) {
       throw new Error('Anime not found');
     }
 
-    if (!user.favorites) {
-      user.favorites = [];
-    }
+    const favorite = this.favoriteRepo.create({ userId, animeId });
+    await this.favoriteRepo.save(favorite);
 
-    if (user.favorites.some(fav => fav.id === animeId)) {
-      return user.favorites;
-    }
-
-    user.favorites.push(anime);
-    await this.userRepo.save(user);
-
-    return user.favorites;
+    return this.getUserFavorites(userId);
   }
 
   async removeFromFavorites(userId: number, animeId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['favorites']
-    });
-
-    if (!user) {
-      throw new Error('User not found');
+    const result = await this.favoriteRepo.delete({ userId, animeId });
+    if (result.affected === 0) {
+      throw new Error('Favorite not found');
     }
-
-    user.favorites = user.favorites.filter(fav => fav.id !== animeId);
-    await this.userRepo.save(user);
-
-    return user.favorites;
+    return this.getUserFavorites(userId);
   }
 
   async getUserRatings(userId: number) {
-    const user = await this.userRepo.findOneBy({ id: userId });
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // В реальной реализации нужно получить рейтинги из отдельной таблицы
-    // Это упрощенная реализация
-    return user.ratings || [];
+    return this.ratingRepo.find({
+      where: { userId },
+      relations: ['anime']
+    });
   }
 
   async addRating(userId: number, animeId: number, score: number) {
-    const user = await this.userRepo.findOneBy({ id: userId });
+    const existingRating = await this.ratingRepo.findOne({ where: { userId, animeId } });
 
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const anime = await this.animeRepo.findOneBy({ id: animeId });
-
-    if (!anime) {
-      throw new Error('Anime not found');
-    }
-
-    if (!user.ratings) {
-      user.ratings = [];
-    }
-
-    // Обновляем рейтинг, если он уже существует
-    const existingRatingIndex = user.ratings.findIndex(r => r.animeId === animeId);
-
-    if (existingRatingIndex >= 0) {
-      user.ratings[existingRatingIndex].score = score;
+    if (existingRating) {
+      existingRating.score = score;
+      await this.ratingRepo.save(existingRating);
     } else {
-      user.ratings.push({ animeId, score });
+      const rating = this.ratingRepo.create({ userId, animeId, score });
+      await this.ratingRepo.save(rating);
     }
 
-    await this.userRepo.save(user);
-
-    return user.ratings;
+    return this.getUserRatings(userId);
   }
 }

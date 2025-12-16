@@ -17,13 +17,22 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    console.log('Auth attempt for email:', email);
     const user = await this.userRepo.findOneBy({ email });
-    if (!user) throw new Error('User not found');
+    if (!user) {
+      console.log('User not found');
+      throw new Error('User not found');
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new Error('Invalid password');
+    if (!valid) {
+      console.log('Invalid password');
+      throw new Error('Invalid password');
+    }
 
+    console.log('User authenticated successfully');
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+    console.log('Generated token:', token);
     return { user, token };
   }
 }

@@ -1,57 +1,55 @@
 import { AppDataSource } from '../../../shared/database/data-source';
 import { Review } from '../domain/review.entity';
-import { Anime } from '../../anime/domain/anime.entity';
 import { User } from '../../user/domain/user.entity';
 
 export class ReviewService {
   private reviewRepo = AppDataSource.getRepository(Review);
-  private animeRepo = AppDataSource.getRepository(Anime);
   private userRepo = AppDataSource.getRepository(User);
 
-  async createReview(
-    userId: number,
-    animeId: number,
-    rating: number,
-    text?: string,
-  ) {
-    const user = await this.userRepo.findOneByOrFail({ id: userId });
-    const anime = await this.animeRepo.findOneByOrFail({ id: animeId });
-
-    // 1️⃣ сохраняем отзыв
+  async createReview(userId: number, animeId: number, rating: number, text: string, userName?: string) {
     const review = this.reviewRepo.create({
-      user,
-      anime,
+      userId,
+      animeId,
       rating,
       text,
     });
 
-    await this.reviewRepo.save(review);
+    const savedReview = await this.reviewRepo.save(review);
 
-    // 2️⃣ пересчитываем рейтинг
-    await this.recalculateAnimeRating(animeId);
+    const userData = await this.userRepo.findOneBy({ id: userId });
 
-    return review;
+    return {
+      id: savedReview.id,
+      animeId: savedReview.animeId,
+      userId: savedReview.userId,
+      rating: savedReview.rating,
+      text: savedReview.text,
+      user: {
+        id: userId,
+        email: userData?.email || '',
+        name: userName || userData?.name
+      }
+    };
   }
 
   async getReviewsByAnime(animeId: number) {
-    return this.reviewRepo.find({
-      where: { anime: { id: animeId } },
-      relations: ['user'],
-    });
-  }
-
-  private async recalculateAnimeRating(animeId: number) {
     const reviews = await this.reviewRepo.find({
-      where: { anime: { id: animeId } },
+      where: { animeId },
+      relations: ['user'],
+      order: { createdAt: 'DESC' }
     });
 
-    if (reviews.length === 0) return;
-
-    const avg =
-      reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-
-    await this.animeRepo.update(animeId, {
-      ratingAvg: Number(avg.toFixed(2)),
-    });
+    return reviews.map(review => ({
+      id: review.id,
+      animeId: review.animeId,
+      userId: review.userId,
+      rating: review.rating,
+      text: review.text,
+      user: {
+        id: review.user.id,
+        email: review.user.email,
+        name: review.user.name
+      }
+    }));
   }
 }
