@@ -19,7 +19,7 @@ router.post('/sync/popular', async (_req, res) => {
       ratingAvg: Number(item.score) || 0,
       episodes: item.episodes,
       status: item.status,
-      genres: item.genres ? item.genres.map((g) => ({ name: g.russian || g.name })) : [],
+      genres: item.genres ? item.genres.map((g: { russian?: string; name: string }) => ({ name: g.russian || g.name })) : [],
     });
     saved.push(anime);
   }
@@ -40,7 +40,7 @@ router.post('/sync/all', async (_req, res) => {
       ratingAvg: Number(item.score) || 0,
       episodes: item.episodes,
       status: item.status,
-      genres: item.genres ? item.genres.map((g) => ({ name: g.russian || g.name })) : [],
+      genres: item.genres ? item.genres.map((g: { russian?: string; name: string }) => ({ name: g.russian || g.name })) : [],
     });
     saved.push(anime);
   }
@@ -48,25 +48,27 @@ router.post('/sync/all', async (_req, res) => {
   res.json(saved);
 });
 
-// 🔁 Синхронизация аниме с жанрами
-router.post('/sync/with-genres', async (_req, res) => {
-  const list = await shikimoriService.getAnimeWithGenres();
-
-  const saved = [];
-  for (const item of list) {
-    const anime = await animeService.createOrUpdate({
-      shikimoriId: item.id,
-      title: item.russian || item.name,
-      posterUrl: item.image?.original,
-      ratingAvg: Number(item.score) || 0,
-      episodes: item.episodes,
-      status: item.status,
-      genres: item.genres ? item.genres.map((g) => ({ name: g.russian || g.name })) : [],
-    });
-    saved.push(anime);
+// 📦 Получить популярные аниме с деталями
+router.get('/popular-with-details', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const popularAnime = await shikimoriService.getAnimeWithDetails(limit);
+    res.json(popularAnime);
+  } catch (error) {
+    console.error('Ошибка при получении популярных аниме с деталями:', error);
+    res.status(500).json({ error: 'Failed to fetch popular anime with details' });
   }
+});
 
-  res.json(saved);
+// 📦 Получить все аниме с деталями
+router.get('/all-with-details', async (_req, res) => {
+  try {
+    const allAnime = await shikimoriService.getAllAnimeWithDetails();
+    res.json(allAnime);
+  } catch (error) {
+    console.error('Ошибка при получении всех аниме с деталями:', error);
+    res.status(500).json({ error: 'Failed to fetch all anime with details' });
+  }
 });
 
 // 📦 Получить сохранённые аниме

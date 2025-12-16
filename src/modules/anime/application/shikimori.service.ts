@@ -72,7 +72,39 @@ export class ShikimoriService {
     }
   }
 
-  async getAnimeWithGenres(): Promise<ShikimoriAnime[]> {
+  async getAnimeWithDetails(limit: number = 20): Promise<ShikimoriAnime[]> {
+    try {
+      const { data: popularAnime } = await shikimoriClient.get<ShikimoriAnime[]>('/animes', {
+        params: {
+          order: 'popularity',
+          limit,
+          status: 'released'
+        },
+      });
+
+      const detailedAnime: ShikimoriAnime[] = [];
+
+      for (const anime of popularAnime) {
+        try {
+          const fullAnime = await this.getById(anime.id);
+          if (fullAnime) {
+            detailedAnime.push(fullAnime);
+          }
+        } catch (error) {
+          console.error(`Не удалось получить детали для аниме ${anime.id}:`, error);
+          detailedAnime.push(anime);
+        }
+      }
+
+      console.log(`ShikimoriService.getAnimeWithDetails: получено ${detailedAnime.length} аниме с деталями`);
+      return detailedAnime;
+    } catch (error) {
+      console.error('ShikimoriService.getAnimeWithDetails ошибка:', error);
+      return [];
+    }
+  }
+
+  async getAllAnimeWithDetails(): Promise<ShikimoriAnime[]> {
     try {
       const allAnime: ShikimoriAnime[] = [];
       let page = 1;
@@ -93,44 +125,69 @@ export class ShikimoriService {
         if (data.length === 0) {
           hasMore = false;
         } else {
-          // Для каждого аниме получаем полную информацию с жанрами
           for (const anime of data) {
             try {
               const fullAnime = await this.getById(anime.id);
               if (fullAnime) {
                 allAnime.push(fullAnime);
+              } else {
+                allAnime.push(anime);
               }
             } catch (error) {
-              console.error(`Не удалось получить полную информацию для аниме ${anime.id}:`, error);
+              console.error(`Не удалось получить детали для аниме ${anime.id}:`, error);
+              allAnime.push(anime);
             }
           }
 
           page++;
 
           // Ограничение на количество страниц для тестирования
-          if (page > 2) {
+          if (page > 5) {
             hasMore = false;
-            console.log('Ограничение: обработано 2 страницы');
+            console.log('Ограничение: обработано 5 страниц');
           }
         }
       }
 
-      console.log(`ShikimoriService.getAnimeWithGenres: получено ${allAnime.length} аниме с жанрами`);
+      console.log(`ShikimoriService.getAllAnimeWithDetails: получено ${allAnime.length} аниме с деталями`);
       return allAnime;
     } catch (error) {
-      console.error('ShikimoriService.getAnimeWithGenres ошибка:', error);
+      console.error('ShikimoriService.getAllAnimeWithDetails ошибка:', error);
       return [];
     }
   }
 
-  async getById(id: number): Promise<ShikimoriAnime | null> {
+  async getById(id: number): Promise<ShikimoriAnime> {
     try {
       const { data } = await shikimoriClient.get<ShikimoriAnime>(`/animes/${id}`);
-      console.log(`Получено аниме ${id}:`, JSON.stringify(data.genres, null, 2));
-      return data;
+
+      // Добавляем описание, если его нет в ответе
+      const response = {
+        ...data,
+        description: data.description || data.russian || 'Нет описания',
+        genres: data.genres || []
+      };
+
+      console.log(`Получено аниме ${id} с деталями:`, {
+        title: response.name,
+        description: response.description,
+        genres: response.genres.map(g => g.name)
+      });
+
+      return response;
     } catch (error) {
       console.error(`ShikimoriService.getById ошибка для id=${id}:`, error);
-      return null;
+      return {
+        id,
+        name: 'Unknown',
+        russian: 'Неизвестно',
+        image: undefined,
+        score: 'N/A',
+        episodes: 0,
+        status: 'unknown',
+        description: 'Нет информации об аниме',
+        genres: []
+      };
     }
   }
 }
