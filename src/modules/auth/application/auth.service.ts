@@ -8,11 +8,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 export class AuthService {
   private userRepo = AppDataSource.getRepository(User);
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string, name?: string) {
     const exists = await this.userRepo.findOneBy({ email });
     if (exists) throw new Error('User already exists');
     const hashed = await bcrypt.hash(password, 10);
-    const user = this.userRepo.create({ email, passwordHash: hashed });
+    const user = this.userRepo.create({ email, passwordHash: hashed, name });
     return this.userRepo.save(user);
   }
 
@@ -31,7 +31,11 @@ export class AuthService {
     }
 
     console.log('User authenticated successfully');
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
     console.log('Generated token:', token);
     return { user, token };
   }

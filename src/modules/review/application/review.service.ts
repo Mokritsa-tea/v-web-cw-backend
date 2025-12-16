@@ -6,7 +6,7 @@ export class ReviewService {
   private reviewRepo = AppDataSource.getRepository(Review);
   private userRepo = AppDataSource.getRepository(User);
 
-  async createReview(userId: number, animeId: number, rating: number, text: string, userName?: string) {
+  async createReview(userId: number, animeId: number, rating: number, text: string) {
     const review = this.reviewRepo.create({
       userId,
       animeId,
@@ -16,7 +16,10 @@ export class ReviewService {
 
     const savedReview = await this.reviewRepo.save(review);
 
-    const userData = await this.userRepo.findOneBy({ id: userId });
+    const userData = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'email', 'name']
+    });
 
     return {
       id: savedReview.id,
@@ -24,11 +27,7 @@ export class ReviewService {
       userId: savedReview.userId,
       rating: savedReview.rating,
       text: savedReview.text,
-      user: {
-        id: userId,
-        email: userData?.email || '',
-        name: userName || userData?.name
-      }
+      user: userData
     };
   }
 

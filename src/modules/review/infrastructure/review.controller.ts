@@ -18,8 +18,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       req.user.id,
       animeId,
       rating,
-      text,
-      req.user.name
+      text
     );
 
     res.status(201).json(review);

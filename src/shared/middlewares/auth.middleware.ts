@@ -5,6 +5,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: number;
     email?: string;
+    name?: string;
   };
 }
 
@@ -24,9 +25,15 @@ export const authMiddleware = (
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecret') as {
       id: number;
       email?: string;
+      name?: string;
     };
 
-    req.user = decoded;
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      name: decoded.name
+    };
+
     next();
   } catch (err) {
     console.error('JWT verification error:', err);

@@ -1,11 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { UserService } from '../application/user.service';
 import { authMiddleware, AuthRequest } from '../../../shared/middlewares/auth.middleware';
-import { FavoriteService } from '../application/favorite.service';
 
 const router = Router();
 const userService = new UserService();
-const favoriteService = new FavoriteService();
 
 router.get('/:id', async (req: Request, res: Response) => {
   try {
@@ -48,7 +46,7 @@ router.get('/:id/favorites', authMiddleware, async (req: AuthRequest, res: Respo
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const favorites = await favoriteService.getFavoritesWithAnime(userId);
+    const favorites = await userService.getUserFavorites(userId);
     res.json(favorites);
   } catch (err: unknown) {
     if (err instanceof Error) {
