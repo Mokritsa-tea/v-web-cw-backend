@@ -38,7 +38,11 @@ export class Anime {
   @Column()
   status!: string;
 
-  @ManyToMany(() => Genre, { cascade: true })
-  @JoinTable()
+  @ManyToMany(() => Genre, (genre) => genre.anime, { cascade: true, onUpdate: 'CASCADE' })
+  @JoinTable({
+    name: 'anime_genres_genre',
+    joinColumn: { name: 'anime_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'genre_id', referencedColumnName: 'id' }
+  })
   genres!: Genre[];
 }

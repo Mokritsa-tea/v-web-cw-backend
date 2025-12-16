@@ -1,85 +1,47 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { AnimeService } from '../application/anime.service';
-import { ShikimoriService } from '../application/shikimori.service';
+import { authMiddleware } from '../../../shared/middlewares/auth.middleware';
 
 const router = Router();
 const animeService = new AnimeService();
-const shikimoriService = new ShikimoriService();
 
-// 🔁 Синхронизация популярных аниме
-router.post('/sync/popular', async (_req, res) => {
-  const list = await shikimoriService.getPopular(20);
-
-  const saved = [];
-  for (const item of list) {
-    const anime = await animeService.createOrUpdate({
-      shikimoriId: item.id,
-      title: item.russian || item.name,
-      posterUrl: item.image?.original,
-      ratingAvg: Number(item.score) || 0,
-      episodes: item.episodes,
-      status: item.status,
-      genres: item.genres ? item.genres.map((g: { russian?: string; name: string }) => ({ name: g.russian || g.name })) : [],
-    });
-    saved.push(anime);
-  }
-
-  res.json(saved);
-});
-
-// 🔁 Синхронизация всех аниме
-router.post('/sync/all', async (_req, res) => {
-  const list = await shikimoriService.getAllAnime();
-
-  const saved = [];
-  for (const item of list) {
-    const anime = await animeService.createOrUpdate({
-      shikimoriId: item.id,
-      title: item.russian || item.name,
-      posterUrl: item.image?.original,
-      ratingAvg: Number(item.score) || 0,
-      episodes: item.episodes,
-      status: item.status,
-      genres: item.genres ? item.genres.map((g: { russian?: string; name: string }) => ({ name: g.russian || g.name })) : [],
-    });
-    saved.push(anime);
-  }
-
-  res.json(saved);
-});
-
-// 📦 Получить популярные аниме с деталями
-router.get('/popular-with-details', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
-    const popularAnime = await shikimoriService.getAnimeWithDetails(limit);
-    res.json(popularAnime);
-  } catch (error) {
-    console.error('Ошибка при получении популярных аниме с деталями:', error);
-    res.status(500).json({ error: 'Failed to fetch popular anime with details' });
+    const anime = await animeService.getAnimeById(Number(req.params.id));
+    res.json(anime);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(400).json({ message: err.message });
+    } else {
+      res.status(400).json({ message: 'Unknown error' });
+    }
   }
 });
 
-// 📦 Получить все аниме с деталями
-router.get('/all-with-details', async (_req, res) => {
+router.post('/import/genres', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const allAnime = await shikimoriService.getAllAnimeWithDetails();
-    res.json(allAnime);
-  } catch (error) {
-    console.error('Ошибка при получении всех аниме с деталями:', error);
-    res.status(500).json({ error: 'Failed to fetch all anime with details' });
+    const genres = await animeService.importGenres();
+    res.json({ message: 'Genres imported successfully', count: genres.length });
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(400).json({ message: err.message });
+    } else {
+      res.status(400).json({ message: 'Unknown error' });
+    }
   }
 });
 
-// 📦 Получить сохранённые аниме
-router.get('/', async (_req, res) => {
-  const anime = await animeService.getAll();
-  res.json(anime);
-});
-
-router.get('/:id', async (req, res) => {
-  const anime = await animeService.getById(Number(req.params.id));
-  res.json(anime);
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const animeList = await animeService.getAllAnime();
+    res.json(animeList);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(400).json({ message: err.message });
+    } else {
+      res.status(400).json({ message: 'Unknown error' });
+    }
+  }
 });
 
 export default router;
